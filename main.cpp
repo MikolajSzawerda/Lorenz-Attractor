@@ -1,7 +1,6 @@
 #include <GL/glut.h>
 #include <utility>
 #include <vector>
-#include <iostream>
 #include "cmath"
 
 #define DELTA M_PI_2
@@ -11,9 +10,7 @@
 #define CURVE_LENGTH 50
 #define ANIMATION_LENGTH 100
 
-double X_PARAM = 3;
-double Y_PARAM = 4;
-double Z_PARAM = 5;
+
 double TIME = 0;
 uint FRAME_COUNTER = 0;
 double ANIMATION_SPEED = 1;
@@ -41,14 +38,15 @@ struct Curve {
     }
 };
 
-std::vector<Curve> CURVES{
-        Curve(M_PI_2, M_PI_2, M_PI_2, 7, 8, 9, 255, 0, 0),
-        Curve(M_PI_2, M_PI_2, M_PI_2, 7, 9, 8, 0, 255, 0),
-        Curve(M_PI_2, M_PI_2, M_PI_2, 8, 7, 9, 0, 0, 255),
-        Curve(M_PI_2, M_PI_2, M_PI_2, 8, 9, 7, 0, 255, 255),
-        Curve(M_PI_2, M_PI_2, M_PI_2, 9, 8, 7, 255, 255, 255),
-        Curve(M_PI_2, M_PI_2, M_PI_2, 9, 7, 8, 255, 0, 255),
+std::vector<Curve> LISSAJOUS_CURVES{
+        Curve(M_PI_4, M_PI_4, M_PI_4, 7, 8, 9, 255, 0, 0),
+        Curve(M_PI_4, M_PI_4, M_PI_4, 7, 9, 8, 0, 255, 0),
+        Curve(M_PI_4, M_PI_4, M_PI_4, 8, 7, 9, 0, 0, 255),
+        Curve(M_PI_4, M_PI_4, M_PI_4, 8, 9, 7, 0, 255, 255),
+        Curve(M_PI_4, M_PI_4, M_PI_4, 9, 8, 7, 255, 255, 255),
+        Curve(M_PI_4, M_PI_4, M_PI_4, 9, 7, 8, 255, 0, 255),
 };
+std::vector<Curve> CURVES = LISSAJOUS_CURVES;
 
 void draw_curves() {
     float alpha_inc = 1.0f/CURVE_LENGTH;
@@ -107,13 +105,17 @@ void draw() {
     ROTATION_ANGLE += 1.0;
 }
 
+Point create_lissajous_point(Curve const& curve){
+    double x = curve.A * sin(curve.x_param * TIME + DELTA);
+    double y = curve.B * sin(curve.y_param * TIME);
+    double z = curve.C * sin(curve.z_param * TIME);
+    return {x, y, z};
+}
+
 
 void generate_frame_update(std::vector<Curve>& curves) {
     for(auto& curve: curves){
-        double x = curve.A * sin(curve.x_param * TIME + DELTA);
-        double y = curve.B * sin(curve.y_param * TIME);
-        double z = curve.C * sin(curve.z_param * TIME);
-        curve.points.emplace_back(x / 2, y / 2, z / 2);
+        curve.points.push_back(create_lissajous_point(curve));
         if(curve.points.size() > CURVE_LENGTH) curve.points.erase(curve.points.begin());
     }
     TIME += DT;
