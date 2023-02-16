@@ -1,15 +1,21 @@
 #include <GL/glut.h>
 #include <utility>
 #include <vector>
+#include <iostream>
+#include <random>
 #include "cmath"
 
 #define DELTA M_PI_2
 #define FPS 25
 #define SKIPPED_FRAMES_TO_UPDATE 0.125
-#define DT 0.01
-#define CURVE_LENGTH 50
+#define DT 0.005
+#define CURVE_LENGTH 100
 #define ANIMATION_LENGTH 100
+#define NUM_OF_CURVES 200
+#define ROTATION_SPEED 0.5
 
+
+#define SCALE 15.0
 
 double TIME = 0;
 uint FRAME_COUNTER = 0;
@@ -46,7 +52,9 @@ std::vector<Curve> LISSAJOUS_CURVES{
         Curve(M_PI_4, M_PI_4, M_PI_4, 9, 8, 7, 255, 255, 255),
         Curve(M_PI_4, M_PI_4, M_PI_4, 9, 7, 8, 255, 0, 255),
 };
-std::vector<Curve> CURVES = LISSAJOUS_CURVES;
+
+std::vector<Curve> LORENZ_CURVES;
+std::vector<Curve> CURVES;
 
 void draw_curves() {
     float alpha_inc = 1.0f/CURVE_LENGTH;
@@ -55,7 +63,7 @@ void draw_curves() {
         glBegin(GL_LINE_STRIP);
         for (Point p: curve.points){
             glColor4f(curve.r/255.0f, curve.g/255.0f, curve.b/255.0f, alpha);
-            glVertex3d(p.x, p.y, p.z);
+            glVertex3d(p.x / SCALE, p.y / SCALE, p.z / SCALE);
             alpha+=alpha_inc;
         }
         glEnd();
@@ -63,38 +71,39 @@ void draw_curves() {
 }
 
 void draw_cube(){
+    float size = 3.0f;
     glColor3f(1,1,1);
     glBegin( GL_LINES );
-    glVertex3f( 1.0, 1.0, 1.0 );
-    glVertex3f( 1.0, - 1.0, 1.0 );
-    glVertex3f( 1.0, - 1.0, 1.0 );
-    glVertex3f( 1.0, - 1.0, - 1.0 );
-    glVertex3f( 1.0, - 1.0, - 1.0 );
-    glVertex3f( 1.0, 1.0, - 1.0 );
-    glVertex3f( 1.0, 1.0, - 1.0 );
-    glVertex3f( 1.0, 1.0, 1.0 );
-    glVertex3f( - 1.0, 1.0, 1.0 );
-    glVertex3f( - 1.0, - 1.0, 1.0 );
-    glVertex3f( - 1.0, - 1.0, 1.0 );
-    glVertex3f( - 1.0, - 1.0, - 1.0 );
-    glVertex3f( - 1.0, - 1.0, - 1.0 );
-    glVertex3f( - 1.0, 1.0, - 1.0 );
-    glVertex3f( - 1.0, 1.0, - 1.0 );
-    glVertex3f( - 1.0, 1.0, 1.0 );
-    glVertex3f( 1.0, 1.0, 1.0 );
-    glVertex3f( - 1.0, 1.0, 1.0 );
-    glVertex3f( 1.0, - 1.0, 1.0 );
-    glVertex3f( - 1.0, - 1.0, 1.0 );
-    glVertex3f( 1.0, - 1.0, - 1.0 );
-    glVertex3f( - 1.0, - 1.0, - 1.0 );
-    glVertex3f( 1.0, 1.0, - 1.0 );
-    glVertex3f( - 1.0, 1.0, - 1.0 );
+    glVertex3f( size, size, size );
+    glVertex3f( size, - size, size );
+    glVertex3f( size, - size, size );
+    glVertex3f( size, - size, - size );
+    glVertex3f( size, - size, - size );
+    glVertex3f( size, size, - size );
+    glVertex3f( size, size, - size );
+    glVertex3f( size, size, size );
+    glVertex3f( - size, size, size );
+    glVertex3f( - size, - size, size );
+    glVertex3f( - size, - size, size );
+    glVertex3f( - size, - size, - size );
+    glVertex3f( - size, - size, - size );
+    glVertex3f( - size, size, - size );
+    glVertex3f( - size, size, - size );
+    glVertex3f( - size, size, size );
+    glVertex3f( size, size, size );
+    glVertex3f( - size, size, size );
+    glVertex3f( size, - size, size );
+    glVertex3f( - size, - size, size );
+    glVertex3f( size, - size, - size );
+    glVertex3f( - size, - size, - size );
+    glVertex3f( size, size, - size );
+    glVertex3f( - size, size, - size );
     glEnd();
 }
 
 
 void draw() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glTranslatef(0.0f, 0.0f, -7.0f);
@@ -102,7 +111,7 @@ void draw() {
     draw_curves();
     draw_cube();
     glutSwapBuffers();
-    ROTATION_ANGLE += 1.0;
+    ROTATION_ANGLE += ROTATION_SPEED;
 }
 
 Point create_lissajous_point(Curve const& curve){
@@ -112,16 +121,28 @@ Point create_lissajous_point(Curve const& curve){
     return {x, y, z};
 }
 
+Point create_lorenz_point(Curve const& curve){
+    Point last_point = curve.points.back();
+    double dx = curve.A*(last_point.y-last_point.x);
+    double dy = last_point.x*(curve.B-last_point.z)-last_point.y;
+    double dz = last_point.x*last_point.y - curve.C*last_point.z;
+    double x = last_point.x+dx*DT;
+    double y = last_point.y+dy*DT;
+    double z = last_point.z+dz*DT;
+    return {x, y, z};
+}
+
 
 void generate_frame_update(std::vector<Curve>& curves) {
     for(auto& curve: curves){
-        curve.points.push_back(create_lissajous_point(curve));
+//        curve.points.push_back(create_lissajous_point(curve));
+        curve.points.push_back(create_lorenz_point(curve));
         if(curve.points.size() > CURVE_LENGTH) curve.points.erase(curve.points.begin());
     }
     TIME += DT;
     if (TIME > ANIMATION_LENGTH) {
         TIME = 0;
-        for(auto& curve:curves) curve.points.clear();
+        for(auto& curve:curves) curve.points.erase(curve.points.begin()+1, curve.points.end());
     }
 }
 
@@ -144,12 +165,6 @@ void reshape(GLsizei width, GLsizei height) {
     gluPerspective(45.0f, aspect, 0.1f, 100.0f);
 }
 
-void init() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
-}
-
 void keyboard_handler(u_char key, int x, int y) {
     switch (key) {
         case '-':
@@ -164,15 +179,40 @@ void keyboard_handler(u_char key, int x, int y) {
     }
 }
 
+void fill_lorenz_curves(){
+    double x = -0.1;
+    double y = -0.2;
+    double z = -0.3;
+    for(int i=0;i<NUM_OF_CURVES;i++){
+        short r = rand()%255;
+        short g = rand()%255;
+        short b = rand()%255;
+        LORENZ_CURVES.push_back(
+        Curve(std::vector<Point>{Point(x, y, z)}, 10.0, 28.0, 8/3.0, 0, 0, 0, r, g, b)
+        );
+        x+=0.1;
+        y+=0.1;
+        z+=0.1;
+    }
+}
+
+void init() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    CURVES = LORENZ_CURVES;
+}
+
 int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(400, 400);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("Hello world!");
+    glutCreateWindow("Lorenz Attractor");
     glutDisplayFunc(draw);
     glutKeyboardFunc(keyboard_handler);
     glutReshapeFunc(reshape);
+    fill_lorenz_curves();
     init();
     update_frames(0);
     glutMainLoop();
