@@ -1,15 +1,15 @@
 #include <GL/glut.h>
+#include <utility>
 #include <vector>
 #include <iostream>
 #include "cmath"
 
-#define A M_PI_2
-#define B M_PI_2
-#define C M_PI_2
 #define DELTA M_PI_2
 #define FPS 25
 #define SKIPPED_FRAMES_TO_UPDATE 0.125
 #define DT 0.01
+#define CURVE_LENGTH 50
+#define ANIMATION_LENGTH 100
 
 double X_PARAM = 3;
 double Y_PARAM = 4;
@@ -27,18 +27,45 @@ struct Point {
     Point(double x, double y, double z) : x(x), y(y), z(z) {}
 };
 
-std::vector<Point> points;
+struct Curve {
+    std::vector<Point> points;
+    double A,B,C;
+    double x_param, y_param, z_param;
+    short r, g, b;
+
+    Curve(std::vector<Point> points, double A, double B, double C, double x, double y, double z, short r, short g, short b)
+        : points(std::move(points)), A(A), B(B), C(C), x_param(x), y_param(y), z_param(z), r(r), g(g), b(b){}
+    Curve(double A, double B, double C, double x, double y, double z, short r, short g, short b)
+        : A(A), B(B), C(C), x_param(x), y_param(y), z_param(z), r(r), g(g), b(b){
+        Curve::points = std::vector<Point>();
+    }
+};
+
+std::vector<Curve> CURVES{
+        Curve(M_PI_2, M_PI_2, M_PI_2, 7, 8, 9, 255, 0, 0),
+        Curve(M_PI_2, M_PI_2, M_PI_2, 7, 9, 8, 0, 255, 0),
+        Curve(M_PI_2, M_PI_2, M_PI_2, 8, 7, 9, 0, 0, 255),
+        Curve(M_PI_2, M_PI_2, M_PI_2, 8, 9, 7, 0, 255, 255),
+        Curve(M_PI_2, M_PI_2, M_PI_2, 9, 8, 7, 255, 255, 255),
+        Curve(M_PI_2, M_PI_2, M_PI_2, 9, 7, 8, 255, 0, 255),
+};
 
 void draw_curves() {
-    glColor3f(1, 0, 0);
-    glBegin(GL_LINE_STRIP);
-    for (Point p: points) glVertex3d(p.x, p.y, p.z);
-    glEnd();
+    float alpha_inc = 1.0f/CURVE_LENGTH;
+    for(const auto& curve: CURVES){
+        float alpha = alpha_inc*2;
+        glBegin(GL_LINE_STRIP);
+        for (Point p: curve.points){
+            glColor4f(curve.r/255.0f, curve.g/255.0f, curve.b/255.0f, alpha);
+            glVertex3d(p.x, p.y, p.z);
+            alpha+=alpha_inc;
+        }
+        glEnd();
+    }
 }
 
 void draw_cube(){
-
-    glColor3f(1, 1, 1);
+    glColor3f(1,1,1);
     glBegin( GL_LINES );
     glVertex3f( 1.0, 1.0, 1.0 );
     glVertex3f( 1.0, - 1.0, 1.0 );
@@ -64,7 +91,6 @@ void draw_cube(){
     glVertex3f( - 1.0, - 1.0, - 1.0 );
     glVertex3f( 1.0, 1.0, - 1.0 );
     glVertex3f( - 1.0, 1.0, - 1.0 );
-    // koniec definicji prymitywu
     glEnd();
 }
 
@@ -82,22 +108,25 @@ void draw() {
 }
 
 
-void generate_frame_update() {
-    double x = A * sin(X_PARAM * TIME + DELTA);
-    double y = B * sin(Y_PARAM * TIME);
-    double z = C * sin(Z_PARAM * TIME);
-    points.emplace_back(x / 2, y / 2, z / 2);
+void generate_frame_update(std::vector<Curve>& curves) {
+    for(auto& curve: curves){
+        double x = curve.A * sin(curve.x_param * TIME + DELTA);
+        double y = curve.B * sin(curve.y_param * TIME);
+        double z = curve.C * sin(curve.z_param * TIME);
+        curve.points.emplace_back(x / 2, y / 2, z / 2);
+        if(curve.points.size() > CURVE_LENGTH) curve.points.erase(curve.points.begin());
+    }
     TIME += DT;
-    if (TIME > 8) {
+    if (TIME > ANIMATION_LENGTH) {
         TIME = 0;
-        points.clear();
+        for(auto& curve:curves) curve.points.clear();
     }
 }
 
 void update_frames(int) {
     if (ANIMATION_SPEED * (FRAME_COUNTER++) > SKIPPED_FRAMES_TO_UPDATE) {
         int frames_to_update = (int) ceil(ANIMATION_SPEED * FRAME_COUNTER / SKIPPED_FRAMES_TO_UPDATE);
-        for (int i = 0; i < frames_to_update; i++) generate_frame_update();
+        for (int i = 0; i < frames_to_update; i++) generate_frame_update(CURVES);
         FRAME_COUNTER = 0;
     }
     glutPostRedisplay();
@@ -115,6 +144,8 @@ void reshape(GLsizei width, GLsizei height) {
 
 void init() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
 }
 
 void keyboard_handler(u_char key, int x, int y) {
